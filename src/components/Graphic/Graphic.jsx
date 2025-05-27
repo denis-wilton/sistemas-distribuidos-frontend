@@ -26,16 +26,18 @@ export default function Graphic() {
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
+
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+
     ctx.fillStyle = "red";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
     const animate = () => {
       const CURRENT_ASSET = assetStore.currentAsset;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
       const asset = assetStore.assets[CURRENT_ASSET];
-
-      console.log(asset);
 
       if (!asset) return;
 
@@ -50,7 +52,7 @@ export default function Graphic() {
         const CANDLE_HEIGHT = 50;
 
         const priceToPixel = (price) => {
-          return canvas.height - (price / 1000) * CANDLE_HEIGHT;
+          return canvasHeight - (price / 1000) * CANDLE_HEIGHT;
         };
 
         const x = 10 + 10 * candleIndex;

@@ -3,6 +3,8 @@ import { useAssetStore } from "./stores/AssetStore";
 import Graphic from "./components/Graphic/Graphic";
 import graphicManager from "./components/Graphic/GraphicManager";
 
+const MAX_BOTS = 15;
+
 function App() {
   const marketDataConnection = useRef(null);
   const chatConnection = useRef(null);
@@ -10,11 +12,34 @@ function App() {
   const { assets, setAsset } = useAssetStore();
   const [message, setMessage] = useState("");
   const [name, setName] = useState("Denis Azevedo");
+  const [roomData, setRoomData] = useState({
+    bots: [],
+  });
 
   const [messages, setMessages] = useState([]);
+  const messagesRef = useRef(null);
+  const [isLockedScroll, setIsLockedScroll] = useState(true);
+
   useEffect(() => {
-    marketDataConnection.current = new WebSocket("ws://192.168.207.214:8081");
-    chatConnection.current = new WebSocket("ws://192.168.207.214:8080");
+    if (messagesRef.current && isLockedScroll) {
+      messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    if (messagesRef.current) {
+      messagesRef.current.addEventListener("scroll", () => {
+        setIsLockedScroll(
+          messagesRef.current.scrollTop ===
+            messagesRef.current.scrollHeight - messagesRef.current.clientHeight
+        );
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    marketDataConnection.current = new WebSocket("ws://192.168.0.102:8081");
+    chatConnection.current = new WebSocket("ws://192.168.0.102:8080");
 
     marketDataConnection.current.onmessage = (event) => {
       const { name: asset, price } = JSON.parse(event.data).data;
@@ -23,11 +48,32 @@ function App() {
     };
 
     chatConnection.current.onmessage = (event) => {
-      setMessages((prevMessages) =>
-        [...prevMessages, JSON.parse(event.data).data]
-          .slice(-150)
-          .filter(Boolean)
-      );
+      const message = JSON.parse(event.data);
+      if (message.type === "message") {
+        setMessages((prevMessages) =>
+          [...prevMessages, message.data].slice(-150).filter(Boolean)
+        );
+      } else {
+        switch (message.type) {
+          case "listRoom":
+            setRoomData({ bots: message.data });
+            break;
+          case "enterRoom":
+            setRoomData((prevRoomData) => ({
+              ...prevRoomData,
+              bots: [...prevRoomData.bots, message.data.bot],
+            }));
+            break;
+          case "leaveRoom":
+            setRoomData((prevRoomData) => ({
+              ...prevRoomData,
+              bots: prevRoomData.bots.filter(
+                (bot) => bot.name !== message.data.bot.name
+              ),
+            }));
+            break;
+        }
+      }
     };
 
     return () => {
@@ -85,19 +131,87 @@ function App() {
           </div>
         </div>
         <div
-          style={{ background: "#222", flex: 1, padding: 20, color: "#FFF" }}
+          style={{
+            background: "#222",
+            flex: 1,
+            padding: 20,
+            color: "#FFF",
+          }}
         >
-          <div style={{ fontWeight: "bold" }}>Chat</div>
           <div
             style={{
-              paddingTop: 20,
+              fontWeight: "bold",
+              display: "flex",
+              gap: "0.5rem",
+              alignItems: "center",
+              justifyContent: "space-between",
+              lineHeight: 1,
+            }}
+          >
+            Chat{" "}
+            <span style={{ fontWeight: "normal", fontSize: 12 }}>
+              {roomData.bots?.length} online
+            </span>
+          </div>
+
+          <div
+            style={{
+              paddingTop: 10,
               display: "grid",
-              gridTemplateRows: "1fr auto",
+              gridTemplateRows: "auto 1fr auto auto",
               gap: 5,
               height: "100%",
             }}
           >
-            <div style={{ overflowY: "auto" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 0,
+                marginBottom: 10,
+              }}
+            >
+              {roomData.bots.slice(0, MAX_BOTS).map((bot, index) => (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 10,
+                    fontWeight: "bold",
+                    width: 26,
+                    marginRight: -8,
+                    cursor: "pointer",
+                    userSelect: "none",
+                    height: 26,
+                    borderRadius: "50%",
+                    background: getVividColorFromName(bot.name),
+                  }}
+                  key={index}
+                >
+                  {getInitials(bot.name)}
+                </div>
+              ))}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 10,
+                  fontWeight: "bold",
+                  width: 26,
+                  marginRight: -5,
+                  cursor: "pointer",
+                  userSelect: "none",
+                  height: 26,
+                  borderRadius: "50%",
+                  background: "#222",
+                }}
+              >
+                +{roomData.bots.length - MAX_BOTS}
+              </div>
+            </div>
+
+            <div ref={messagesRef} style={{ overflowY: "auto" }}>
               {messages.map((message, index) => (
                 <div
                   key={index}
@@ -105,8 +219,6 @@ function App() {
                     color: message.type === "system" ? "gray" : "unset",
                     padding: 5,
                     borderRadius: 5,
-                    background:
-                      message.type === "system" ? "#ddd" : "transparent",
                   }}
                 >
                   {message.type === "user" ? (
@@ -125,6 +237,33 @@ function App() {
                   {message.message}
                 </div>
               ))}
+            </div>
+
+            <div
+              style={{
+                fontSize: 10,
+                color: "gray",
+                cursor: "pointer",
+                display: "flex",
+                justifyContent: "end",
+                height: 20,
+                marginTop: -20,
+                marginRight: 20,
+                gap: 2,
+              }}
+              onClick={() => {
+                setIsLockedScroll(!isLockedScroll);
+              }}
+            >
+              <span style={{ fontWeight: "bold" }}>Scroll:</span>
+              <span
+                style={{
+                  fontWeight: "normal",
+                  color: isLockedScroll ? "#00FF00" : "tomato",
+                }}
+              >
+                {isLockedScroll ? "Locked" : "Unlocked"}
+              </span>
             </div>
 
             <div
@@ -279,6 +418,13 @@ function hslToRgb(h, s, l) {
   }
 
   return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+function getInitials(name) {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("");
 }
 
 // Helper: Convert RGB to hex
