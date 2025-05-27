@@ -38,8 +38,11 @@ function App() {
   }, []);
 
   useEffect(() => {
-    marketDataConnection.current = new WebSocket("ws://192.168.0.102:8081");
-    chatConnection.current = new WebSocket("ws://192.168.0.102:8080");
+    const baseUrl = window.location.hostname;
+    marketDataConnection.current = new WebSocket(
+      `ws://${baseUrl}/market-data/`
+    );
+    chatConnection.current = new WebSocket(`ws://${baseUrl}/chat/`);
 
     marketDataConnection.current.onmessage = (event) => {
       const { name: asset, price } = JSON.parse(event.data).data;
