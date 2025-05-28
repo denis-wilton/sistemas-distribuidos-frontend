@@ -247,32 +247,7 @@ function App() {
               ))}
             </div>
 
-            <div
-              style={{
-                fontSize: 10,
-                color: "gray",
-                cursor: "pointer",
-                display: "flex",
-                justifyContent: "end",
-                height: 20,
-                marginTop: -20,
-                marginRight: 20,
-                gap: 2,
-              }}
-              onClick={() => {
-                setIsLockedScroll(!isLockedScroll);
-              }}
-            >
-              <span style={{ fontWeight: "bold" }}>Scroll:</span>
-              <span
-                style={{
-                  fontWeight: "normal",
-                  color: isLockedScroll ? "#00FF00" : "tomato",
-                }}
-              >
-                {isLockedScroll ? "Locked" : "Unlocked"}
-              </span>
-            </div>
+            <div></div>
 
             <div
               style={{
