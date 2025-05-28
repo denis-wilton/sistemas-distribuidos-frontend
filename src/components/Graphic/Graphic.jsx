@@ -2,14 +2,6 @@ import { useEffect, useRef } from "react";
 import { useAssetStore } from "../../stores/AssetStore";
 import graphicManager from "./GraphicManager";
 
-function chunkArray(array, chunkSize) {
-  const chunks = [];
-  for (let i = 0; i < array.length; i += chunkSize) {
-    chunks.push(array.slice(i, i + chunkSize));
-  }
-  return chunks;
-}
-
 function getCandleData(candle) {
   return {
     open: candle[0],
@@ -27,48 +19,107 @@ export default function Graphic() {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
+    const resizeCanvas = () => {
+      const parent = canvas.parentElement;
+      const width = parent.offsetWidth;
+      const height = parent.offsetHeight;
 
-    ctx.fillStyle = "red";
-    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+      // Ajusta o tamanho físico do canvas
+      canvas.width = width;
+      canvas.height = height;
 
-    const animate = () => {
-      const CURRENT_ASSET = assetStore.currentAsset;
-      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+      draw(); // Redesenha ao redimensionar
+    };
 
-      const asset = assetStore.assets[CURRENT_ASSET];
+    const draw = async () => {
+      const CURRENT_ASSET = assetStore.currentAsset ?? "PETR4";
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      if (!asset) return;
+      // water mark with the current asset in the middle of the canvas
+      ctx.fillStyle = "white";
+      ctx.globalAlpha = 0.1;
+      ctx.font = "88px Arial";
+      const textWidth = ctx.measureText(CURRENT_ASSET).width;
+      ctx.fillText(
+        CURRENT_ASSET,
+        canvas.width / 2 - textWidth / 2,
+        canvas.height / 2
+      );
+      ctx.globalAlpha = 1;
 
-      const dataSerie = graphicManager.getHistory(CURRENT_ASSET);
-      const candles = chunkArray(dataSerie, 10);
+      const candles = graphicManager.getHistory(CURRENT_ASSET);
+
+      if (!candles) {
+        requestAnimationFrame(draw);
+        return;
+      }
+
+      const highestPrice = Math.max(...candles.flat());
+      const lowestPrice = Math.min(...candles.flat());
+
+      const priceToPixel = (price) => {
+        return (
+          canvas.height -
+          ((price - lowestPrice) / (highestPrice - lowestPrice)) * canvas.height
+        );
+      };
 
       let candleIndex = 0;
       for (const candle of candles) {
         const { open, high, low, close } = getCandleData(candle);
+        const x = 10 * candleIndex;
 
-        const CANDLE_WIDTH = 10;
-        const CANDLE_HEIGHT = 50;
-
-        const priceToPixel = (price) => {
-          return canvasHeight - (price / 1000) * CANDLE_HEIGHT;
-        };
-
-        const x = 10 + 10 * candleIndex;
-        const y = priceToPixel((open + close) / 2);
-
+        // Sombra (linha vertical)
         ctx.fillStyle = "white";
-        ctx.fillRect(x, y, CANDLE_WIDTH, CANDLE_HEIGHT);
+        const highY = priceToPixel(high);
+        const lowY = priceToPixel(low);
+        ctx.fillRect(x + 4, highY, 1, lowY - highY);
+
+        // Corpo da vela
+        const openY = priceToPixel(open);
+        const closeY = priceToPixel(close);
+        const bodyY = Math.min(openY, closeY);
+        const bodyHeight = Math.abs(closeY - openY);
+
+        ctx.fillStyle = open > close ? "#DC3545" : "#4BB543";
+        ctx.fillRect(x + 1, bodyY, 8, bodyHeight);
 
         candleIndex++;
       }
 
-      requestAnimationFrame(animate);
+      const currentPrice = candles.at(-1).at(-1);
+      const currentPriceY = priceToPixel(currentPrice);
+      ctx.fillStyle = "white";
+      ctx.globalAlpha = 0.1;
+      ctx.fillRect(0, currentPriceY, canvas.width, 1);
+
+      ctx.globalAlpha = 1;
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "white";
+
+      const beforeCurrentPrice = candles.at(-1).at(0);
+      const variation =
+        ((currentPrice - beforeCurrentPrice) / beforeCurrentPrice) * 100;
+
+      // measure current price width
+      const currentPriceWidth = ctx.measureText(currentPrice.toFixed(2)).width;
+      ctx.fillText(`${currentPrice.toFixed(2)}`, 10, currentPriceY - 10);
+      ctx.fillStyle = variation > 0 ? "#4BB543" : "#DC3545";
+      ctx.fillText(
+        `(${variation.toFixed(2)}%)`,
+        10 + 5 + currentPriceWidth,
+        currentPriceY - 10
+      );
+
+      requestAnimationFrame(draw);
     };
 
-    requestAnimationFrame(animate);
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    return () => window.removeEventListener("resize", resizeCanvas);
   }, [assetStore.currentAsset, assetStore.assets]);
+
   return (
     <div style={{ width: "100%", height: "100%" }}>
       <canvas ref={canvasRef} style={{ width: "100%", height: "100%" }} />

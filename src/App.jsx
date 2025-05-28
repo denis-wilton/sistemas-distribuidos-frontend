@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAssetStore } from "./stores/AssetStore";
 import Graphic from "./components/Graphic/Graphic";
 import graphicManager from "./components/Graphic/GraphicManager";
+import AssetSelector from "./components/AssetSelector/AssetSelector";
 
 const MAX_BOTS = 15;
 
@@ -9,7 +10,7 @@ function App() {
   const marketDataConnection = useRef(null);
   const chatConnection = useRef(null);
 
-  const { assets, setAsset } = useAssetStore();
+  const { setAsset } = useAssetStore();
   const [message, setMessage] = useState("");
   const [name, setName] = useState("Denis Azevedo");
   const [roomData, setRoomData] = useState({
@@ -121,13 +122,17 @@ function App() {
             color: "#FFF",
           }}
         >
-          <div style={{ fontWeight: "bold" }}>Market Data</div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <div style={{ fontWeight: "bold" }}>Market Data</div>
+            <AssetSelector />
+          </div>
           <div
             style={{
               paddingTop: 20,
               display: "flex",
               flexDirection: "column",
               gap: 10,
+              height: "100%",
             }}
           >
             <Graphic />
