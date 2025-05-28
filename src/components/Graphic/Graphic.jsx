@@ -13,6 +13,7 @@ function getCandleData(candle) {
 
 export default function Graphic() {
   const canvasRef = useRef(null);
+  const animationRef = useRef(null);
   const assetStore = useAssetStore();
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function Graphic() {
       const candles = graphicManager.getHistory(CURRENT_ASSET);
 
       if (!candles) {
-        requestAnimationFrame(draw);
+        animationRef.current = requestAnimationFrame(draw);
         return;
       }
 
@@ -111,14 +112,17 @@ export default function Graphic() {
         currentPriceY - 10
       );
 
-      requestAnimationFrame(draw);
+      animationRef.current = requestAnimationFrame(draw);
     };
 
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
 
-    return () => window.removeEventListener("resize", resizeCanvas);
-  }, [assetStore.currentAsset, assetStore.assets]);
+    return () => {
+      window.removeEventListener("resize", resizeCanvas);
+      cancelAnimationFrame(animationRef.current);
+    };
+  }, [assetStore.currentAsset]);
 
   return (
     <div style={{ width: "100%", height: "100%" }}>
