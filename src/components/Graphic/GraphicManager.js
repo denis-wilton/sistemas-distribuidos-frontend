@@ -58,4 +58,6 @@ export function createGraphicManager() {
 
 const graphicManager = createGraphicManager();
 
+window.graphicManager = graphicManager;
+
 export default graphicManager;

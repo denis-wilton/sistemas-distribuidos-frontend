@@ -5,10 +5,6 @@ export default function AssetSelector() {
   const [isOpen, setIsOpen] = useState(false);
   const { currentAsset, setCurrentAsset, assets } = useAssetStore();
 
-  useEffect(() => {
-    console.log(assets);
-  }, [assets]);
-
   return (
     <div style={{ position: "relative" }}>
       <button
